@@ -1,0 +1,549 @@
+---
+title: "Exploratory Data Analysis and Visualization"
+author: "최현석, 정형윤"
+date: "2024-12-16"
+output:
+  beamer_presentation:
+    theme: metropolis
+subtitle: The last week_Final Project
+header-includes:
+- \usepackage{kotex}
+- \usepackage{multirow}
+- \usepackage{multicol}
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## 목차
+\begin{enumerate}
+  \item 주제 소개
+  \item 데이터 소개 및 전처리
+  \item 연구 주제
+  \item 자료분석 및 시각화
+\end{enumerate}
+
+# 1. 주제 소개
+
+## \colorbox{RoyalBlue}{주제 소개}
+
+\begin{multicols}{2}  
+  \begin{itemize}
+    \Large
+    \item[\textcolor{orange}{$\bullet$}] \textbf{야구}
+  \end{itemize}
+  \begin{figure}
+    \includegraphics[width=0.9\linewidth]{baseballrank.png}
+    \caption{2024 KBO리그 순위}
+  \end{figure}
+  
+  \columnbreak
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{baseballpark.jpg}
+    \centering
+    \caption{수원KT위즈파크}
+  \end{figure}
+\end{multicols}
+
+## \colorbox{RoyalBlue}{주제 소개}
+\begin{itemize}
+  \item 2024년, KBO리그 사상 최초로 1000만 관중을 기록하였다.
+\end{itemize}
+
+```{r, warning=F, message=F, fig.height = 2.5, fig.width = 4, echo = FALSE}
+library(readxl)
+attend <- read_excel("KBO League 2024.xlsx", sheet = 3)
+
+library(ggplot2)
+a0 <- ggplot(attend, aes(x = 연도, y = 총합))
+a1 <- a0 + geom_line(color = "orange", size = 1) + 
+  geom_point(color = "orange", size = 1) + 
+  scale_y_continuous(breaks = seq(0, 13000000, 2000000), labels = scales::comma) +
+  labs(title = 'KBO Baseball Audience Attendance by Year',
+       x = 'Year', y = 'Number of Audience') +
+  theme_bw() +
+  theme(
+    plot.title = element_text(face = "bold", size = 10),
+    axis.title.x = element_text(size = 7),  
+    axis.title.y = element_text(size = 7),
+    axis.text.y = element_text(size = 6),
+    axis.text.x = element_text(size = 6)
+  ); a1
+
+```
+
+
+
+
+# 2. 데이터 소개 및 전처리
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\begin{itemize}
+  \item \textbf{이름}: 2024 KBO 정규시즌 타자 및 투수 기록
+  \item \textbf{출처}: KBO 공식 홈페이지 기록실 자료
+  \item \textbf{수집기관}: 한국야구위원회
+  \item \textbf{샘플크기}: 총 타자 299명, 투수 290명 선수 정보
+  \item \textbf{수집기간}: 2024년 3월 23일부터 2024년 10월 1일까지 2024 KBO리그 정규시즌 기록
+\end{itemize}
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\scriptsize
+```{r, warning=F, message=F}
+batter <- read_excel("KBO League 2024.xlsx", sheet=1)
+head(batter)
+dim(batter)
+```
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\scriptsize
+```{r, warning=F, message=F}
+pitcher <- read_excel("KBO League 2024.xlsx", sheet=2)
+head(pitcher)
+dim(pitcher)
+```
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\scriptsize
+\begin{enumerate}
+  \item 타자 데이터에서 object 자료형을 float형으로 변환
+  \item 팀별 순위와 포스트시즌 진출여부 열 추가
+  \item 시각화 시 명확한 순위 표시를 위해 팀명을 순서있게 설정
+\end{enumerate}
+
+\tiny
+```{r, warning=F, message=F}
+# AVG, SLG, OBP, OPS의 열 값 중 -'를 0으로 치환 후 숫자형으로 변환
+batter$AVG[batter$AVG == "-"] <- 0
+batter$SLG[batter$SLG == "-"] <- 0
+batter$OBP[batter$OBP == "-"] <- 0
+batter$OPS[batter$OPS == "-"] <- 0
+batter$AVG <- as.numeric(batter$AVG)
+batter$SLG <- as.numeric(batter$SLG)
+batter$OBP <- as.numeric(batter$OBP)
+batter$OPS <- as.numeric(batter$OPS)
+
+# 팀 순위 벡터
+team_rank <- c("KIA" = 1, "삼성" = 2, "LG" = 3, "두산" = 4, "KT" = 5,
+               "SSG" = 6, "롯데" = 7, "한화" = 8, "NC" = 9, "키움" = 10)
+# 순위 열 추가
+batter$rank <- team_rank[batter$팀명]
+
+# 포스트시즌 진출여부 열 추가
+batter$postseason <- ifelse(batter$rank <= 5, "Qualified", "Not Qualified")
+
+# 팀명을 순서있는 팩터로 설정 (하위권->상위권)
+batter$팀명 <- factor(batter$팀명, levels = rev(names(team_rank)))
+
+## 투수 데이터도 타자 데이터와 동일하게 전처리 ---
+```
+
+\tiny
+```{r, warning=F, message=F, echo = FALSE}
+# ERA, WPCT, WHIP, AVG의 열 값 중 -'를 0으로 치환
+pitcher$ERA[pitcher$ERA == "-"] <- 0
+pitcher$WPCT[pitcher$WPCT == "-"] <- 0
+pitcher$WHIP[pitcher$WHIP == "-"] <- 0
+pitcher$AVG[pitcher$AVG == "-"] <- 0
+# 숫자형 변환
+pitcher$ERA <- as.numeric(pitcher$ERA)
+pitcher$WPCT <- as.numeric(pitcher$WPCT)
+pitcher$WHIP <- as.numeric(pitcher$WHIP)
+pitcher$AVG <- as.numeric(pitcher$AVG)
+
+# 순위 열 추가
+pitcher$rank <- team_rank[pitcher$팀명]
+
+# 포스트시즌 진출여부 열 추가
+pitcher$postseason <- ifelse(pitcher$rank <= 5, "Qualified", "Not Qualified")
+
+# 팀명을 순서있는 팩터로 설정 (하위권->상위권)
+pitcher$팀명 <- factor(pitcher$팀명, levels = rev(names(team_rank)))
+```
+
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\small
+\begin{multicols}{2}  
+  \textbf{타자 데이터 변수 [28개]} 
+  \tiny
+  \begin{itemize}
+    \item \textcolor{purple}{선수명: 선수 이름}
+    \item \textcolor{purple}{팀명: 소속된 팀 이름}
+    \item \textcolor{red}{AVG: Batting Average (타율)}
+    \item G: Games (경기)
+    \item \textcolor{red}{PA: Plate Appearances (타석)}
+    \item AB: At-Bats (타수)
+    \item \textcolor{red}{R: Runs (득점)}
+    \item \textcolor{red}{H: Hits (안타)}
+    \item 2B: Doubles (2루타)
+    \item 3B: Triples (3루타)
+    \item HR: Home Runs (홈런)
+    \item TB: Total Bases (루타)
+    \item \textcolor{red}{RBI: Runs Batted In (타점)}
+    \item SAC: Sacrifice Bunts (희생번트)
+    \item SF: Sacrifice Flies (희생플라이)
+    \item BB: Walks/Base on Balls (볼넷)
+    \item IBB: Intentional Walks (고의 4구)
+    \item HBP: Hit by Pitch (사구)
+    \item \textcolor{red}{SO: Strikeouts (삼진)}
+    \item GDP: Grounded into Double Plays (병살타)
+    \item SLG: Slugging Percentage (장타율)
+    \item OBP: On-Base Percentage (출루율)
+    \item \textcolor{red}{OPS: On-Base Plus Slugging (출루율+장타율)}
+    \item MH: Multi-Hits (멀티히트)
+    \item RISP: Batting Average with Runners in Scoring Position (득점권타율)
+    \item PH-BA: Pinch-Hit Batting Average (대타타율)
+    \item \textcolor{red}{rank: 2024 KBO 정규시즌 최종 순위}
+    \item \textcolor{red}{postseason: 포스트시즌 진출여부}
+  \end{itemize}
+\end{multicols}
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\small
+\begin{multicols}{3} 
+  \textbf{투수 데이터 변수 [34개]} 
+  \tiny
+  \begin{itemize}
+    \item \textcolor{purple}{선수명: 선수 이름}
+    \item \textcolor{purple}{팀명: 소속된 팀 이름}
+    \item \textcolor{red}{ERA: Earned Run Average (평균자책점)}
+    \item G: Games (경기)
+    \item \textcolor{red}{W: Wins (승리)}
+    \item \textcolor{red}{L: Losses (패배)}
+    \item SV: Saves (세이브)
+    \item HLD: Holds (홀드)
+    \item \textcolor{red}{WPCT: Winning Percentage (승률)}
+    \item \textcolor{red}{IP: Innings Pitched (투구 이닝)}
+    \item H: Hits (피안타)
+    \item HR: Home Runs (홈런)
+    \item \textcolor{red}{BB: Walks (볼넷)}
+    \item HBP: Hit by Pitch (사구)
+    \item \textcolor{red}{SO: Strikeouts (삼진)}
+    \item \textcolor{red}{R: Runs Allowed (실점)}
+    \item ER: Earned Runs (자책점)
+    \item WHIP: Walks Hits per Inning Pitched (이닝당 출루허용률)
+    \item CG: Complete Games (완투)
+    \item SHO: Shutouts (완봉)
+    \item QS: Quality Starts (퀄리티 스타트)
+    \item BSV: Blown Saves (블론세이브)
+    \item TBF: Total Batters Faced (총 대면 타자 수)
+    \item NP: Number of Pitches (투구 수)
+    \item AVG: Batting Average (피안타율)
+    \item 2B: Doubles (2루타)
+    \item 3B: Triples (3루타)
+    \item SAC: Sacrifice Bunts (희생번트)
+    \item SF: Sacrifice Flies (희생플라이)
+    \item IBB: Intentional Base on Balls (고의 4구)
+    \item WP: Wild Pitches (폭투)
+    \item BK: Balks (보크)
+    \item \textcolor{red}{rank: 2024 KBO 정규시즌 최종 순위}
+    \item \textcolor{red}{postseason: 포스트시즌 진출여부}
+  \end{itemize}
+\end{multicols}
+
+
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\scriptsize
+\begin{itemize}
+  \item 타자의 주요변수 기초통계정보
+\end{itemize}
+
+\tiny
+```{r, warning=F, message=F}
+batter1 <- batter[,c('선수명','팀명','AVG','PA','R','H','HR','RBI','SO','OPS', 'rank', 'postseason')]
+summary(batter1)
+```
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\scriptsize
+\begin{itemize}
+  \item 투수의 주요변수 기초통계정보
+\end{itemize}
+
+\tiny
+```{r, warning=F, message=F}
+pitcher1 <- pitcher[,c('선수명','팀명','ERA','W','L','WPCT','IP','BB','SO','R', 'rank', 'postseason')]
+summary(pitcher1)
+```
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\textbf{타자 데이터 주요 변수 - 예시} 
+\begin{itemize}
+  \small
+  \item KIA 김도영 선수
+\end{itemize}
+\begin{figure}
+\includegraphics[width=0.3\textwidth, height=0.42\textheight]{kim doyoung.png}
+\end{figure}
+
+\tiny
+```{r, warning=F, message=F}
+batter1[batter1$선수명 == '김도영',]
+```
+
+
+## \colorbox{RoyalBlue}{데이터 소개 및 전처리 - 타자와 투수 데이터}
+\textbf{투수 데이터 주요 변수 - 예시} 
+\begin{itemize}
+  \small
+  \item 삼성 원태인 선수
+\end{itemize}
+\begin{figure}
+\includegraphics[width=0.3\textwidth, height=0.5\textheight]{won taein.png}
+\end{figure}
+
+\tiny
+```{r, warning=F, message=F}
+pitcher1[pitcher1$선수명 == '원태인',]
+```
+
+# 3. 연구 주제
+
+## \colorbox{RoyalBlue}{연구주제}
+\begin{itemize}
+  \large
+  \item[\textcolor{orange}{$\bullet$}] \textbf{주제}
+  \scriptsize
+  \item \textbf{포스트시즌 진출여부에 따른 2024 KBO 정규시즌 성적의 차이 분석}
+  \begin{enumerate}
+  \scriptsize
+    \item 연구주제1: 포스트시즌 진출여부에 따른 팀별 총 득점과 실점
+    \item 연구주제2: 포스트시즌 진출여부에 따른 팀별 주요지표 타자 OPS과 투수 ERA
+    \item 연구주제3: 포스트시즌 진출여부에 따른 득점과 홈런의 관계
+  \end{enumerate}
+  \begin{figure}
+    \includegraphics[width=0.8\textwidth, height=0.6\textheight]{postseason.jpg}
+  \end{figure}
+  
+\end{itemize}
+
+# 4. 자료분석 및 시각화
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 1-1 타자 총 득점 비교}
+\tiny
+```{r, warning=F, message=F, fig.height = 4, fig.width = 6}
+# 1-1. 포스트시즌 진출여부에 따른 팀별 총 득점 막대그래프
+library(RColorBrewer)
+team_colors <- c(brewer.pal(n = 10, name = "RdBu"), 'lightcoral', '#BFEFFF')
+sum_r1 <- aggregate(R ~ postseason, data = batter, FUN = sum) 
+bat <- merge(sum_r1, batter, by='postseason', suffixes = c("_post", ""))
+b1 <- ggplot(bat, mapping=aes(x = 팀명, y = R, fill = 팀명, group=팀명)) +
+  geom_bar(aes(y = R_post/5, fill = ifelse(postseason == "Qualified", "red", "blue")), stat = "identity", 
+           position = "dodge", width = 1.0, alpha = 0.02) + # 포스트 진출 여부별 평균 득점 막대
+  geom_bar(stat = "identity", show.legend = FALSE, width=0.7) + # 팀별 평균 득점 막대
+  scale_fill_manual(values = team_colors) +
+  coord_cartesian(ylim = c(600, 880)) +
+  scale_y_continuous(breaks = seq(600, 880, by = 50)) +
+  geom_hline(data = sum_r1, aes(yintercept = R/5, color = postseason), 
+             alpha=0.8, linetype = 2, size = 0.5, color=c('red','blue')) + # 포스트 진출 여부별 평균 득점 선
+  labs(title = "Total Runs Scored by Team", 
+       x = "Team", y = "Runs Scored",
+       subtitle="2024 KBO League",
+       caption="Korea Baseball Organization") +
+  theme_light() +
+  theme(legend.position = "None",
+        plot.title = element_text(face = "bold", size = 10),
+        axis.title.x = element_text(size = 7),  
+        axis.title.y = element_text(size = 7),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6)); b1
+```
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 1-2 투수 총 실점 비교}
+\tiny
+```{r, warning=F, message=F, fig.height = 4, fig.width = 6}
+# 1-2. 포스트시즌 진출여부에 따른 팀별 총 실점 막대그래프
+sum_r2 <- aggregate(R ~ postseason, data = pitcher, FUN = sum)
+pit <- merge(sum_r2, pitcher, by='postseason', suffixes = c("_post", ""))
+b2 <- ggplot(pit, mapping = aes(x = 팀명, y = R, fill = 팀명, group = 팀명)) +
+  geom_bar(aes(y = R_post/5, fill = ifelse(postseason == "Qualified", "red", "blue")), stat = "identity", 
+           position = "dodge", width = 1.0, alpha = 0.03) + # 포스트 진출여부별 평균 실점 막대
+  geom_bar(stat = "identity", show.legend = FALSE, width=0.7) + # 팀별 평균 실점 막대
+  scale_fill_manual(values = team_colors) +
+  coord_cartesian(ylim = c(600, 880)) +
+  scale_y_continuous(breaks = seq(600, 880, by = 50)) +
+  geom_hline(data = sum_r2, aes(yintercept = R/5, color = postseason), 
+             alpha=0.8, linetype = 2, size = 0.5, color=c('red','blue')) + # 포스트 진출여부별 평균 실점 선
+  labs(title = "Total Runs Allowed by Team", 
+       x = "Team", y = "Runs Allowed",
+       subtitle="2024 KBO League",
+       caption="Korea Baseball Organization") +
+  theme_light() +
+  theme(legend.position = "None",
+        plot.title = element_text(face = "bold", size = 10),
+        axis.title.x = element_text(size = 7),  
+        axis.title.y = element_text(size = 7),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6)); b2
+```
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 1-3 총 득점과 실점 비교}
+\tiny
+```{r, warning=F, message=F, fig.height = 4, fig.width = 6}
+# 1-3. 포스트시즌 진출 여부에 따른 총 득점과 실점 막대그래프
+library(gridExtra)
+grid.arrange(b1, b2, ncol = 2)
+```
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 주제1 분석결과}
+\begin{itemize}
+  \scriptsize
+  \item[\textcolor{blue}{$\bullet$}] \textbf{연구주제1: 포스트시즌 진출여부에 따른 팀별 총 득점과 실점}
+    \begin{figure}
+    \includegraphics[width=0.9\textwidth, height=0.7\textheight]{Visualization1.png}
+    \end{figure}
+  \item 포스트시즌 진출한 팀의 평균 득점이 49.6점 높고, 평균 실점이 32점 낮다.
+  \item NC, 롯데 팀의 득점이 높아도 포스트시즌 진출하지 못한 이유는 실점이 높고, 득점의 효율성이 비교적 낮기 때문이다.
+\end{itemize}
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 2-1 주요지표 타자 OPS 비교}
+\tiny
+```{r, warning=F, message=F, fig.height = 2, fig.width = 5}
+# 2-1. 포스트시즌 진출 여부에 따른 팀별 타자 OPS 박스플롯
+bsub1 <- subset(batter, PA >= summary(batter$PA)['Median']) # 타석 중앙값 89타석 이상 데이터
+mean_values1 <- aggregate(OPS ~ postseason, data = bsub1, FUN = mean)
+t0 <- ggplot(bsub1, aes(x = postseason, y = OPS, fill =팀명))
+t1 <- t0 + geom_boxplot(data=bsub1, aes(x = postseason, y = OPS, fill = postseason), 
+                        alpha = 0.6, width=1.0, color = NA) + # 포스트 진출 여부별 OPS 박스플롯
+  geom_boxplot(width = 0.5) + # 팀별 OPS 박스플롯
+  scale_fill_manual(values = team_colors) +
+  geom_hline(data = mean_values1, aes(yintercept = OPS, color = postseason), 
+             alpha=0.8, linetype = 2, size = 0.5, color=c('red','blue')) + # 포스트 진출 여부별 평균 OPS 선
+  labs(title = 'Comparison of Batters OPS', x = 'Postseason Advancement',
+       subtitle="2024 KBO League",
+       caption="Korea Baseball Organization") + 
+  theme_light() +
+  theme(legend.position = "None",
+        plot.title = element_text(face = "bold", size = 10),
+        axis.title.x = element_text(size = 7),  
+        axis.title.y = element_text(size = 7),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6)) ; t1
+
+
+```
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 2-2 주요지표 투수 ERA 비교}
+\tiny
+```{r, warning=F, message=F, fig.height = 2, fig.width = 5}
+# 2-2. 포스트시즌 진출 여부에 따른 팀별 투수 ERA 박스플롯 
+psub1 <- subset(pitcher, IP >= summary(pitcher$IP)['Median']) # 이닝 중앙값 32이닝 이상 데이터
+mean_values2 <- aggregate(ERA ~ postseason, data = psub1, FUN = mean)
+p0 <- ggplot(psub1, aes(x = postseason, y = ERA, fill =팀명))
+p1 <- p0 + geom_boxplot(data=psub1, aes(x = postseason, y = ERA, fill = postseason), 
+                        alpha = 0.6, width=1.0, color = NA) + # 포스트 진출 여부별 ERA 박스플롯
+  geom_boxplot(width = 0.5) + # 팀별 ERA 박스플롯
+  scale_fill_manual(values = team_colors) +
+  geom_hline(data = mean_values2, aes(yintercept = ERA, color = postseason), 
+             alpha=0.8, linetype = 2, size = 0.5, color=c('red','blue')) + # 포스트 진출여부별 평균 ERA 선
+  labs(title = 'Comparison of Pitchers ERA', x = 'Postseason Advancement',
+       subtitle="2024 KBO League",
+       caption="Korea Baseball Organization") +
+  theme_light() +
+  theme(legend.position = "None",
+        plot.title = element_text(face = "bold", size = 10),
+        axis.title.x = element_text(size = 7),  
+        axis.title.y = element_text(size = 7),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6)); p1
+```
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 2-3 주요지표 타자 OPS, 투수 ERA 팀 비교}
+\tiny
+```{r, warning=F, message=F, fig.height = 3.8, fig.width = 6}
+# 2-3. 포스트시즌 진출 여부에 따른 팀별 주요지표 타자 OPS, 투수 ERA의 박스플롯
+grid.arrange(t1, p1, ncol = 2)
+```
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 주제2 분석결과}
+\begin{itemize}
+  \scriptsize
+  \item[\textcolor{blue}{$\bullet$}] \textbf{연구주제2: 포스트시즌 진출여부에 따른 팀별 주요지표 타자 OPS과 투수 ERA}
+    \begin{figure}
+    \includegraphics[width=0.9\textwidth, height=0.7\textheight]{Visualization2.png}
+    \end{figure}
+ \item 포스트시즌 진출한 팀의 평균 출루율이 0.04 높고, 평균 자책점이 0.5 낮다.
+ \item 전체 수치로 보면, 팀별 6000번 타석 중 240번의 추가 출루와 72점의 실점으로 큰 차이이며, 이는 승패 차이에 큰 영향을 미친다.
+\end{itemize}
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 3 득점과 홈런의 관계}
+\tiny
+```{r, warning=F, message=F, fig.height = 2, fig.width = 5}
+# 3. 포스트시즌 진출여부에 따른 홈런 수와 득점의 관계
+library(ggrepel)
+bsub2 <- subset(batter, PA >= summary(batter$PA)['Median'] & HR >= summary(bsub1$HR)[2]) # 타석 중앙값 이상 선수의 홈런 상위 75%
+mean_value3 <- aggregate(cbind(HR, R) ~ postseason, bsub1, mean)
+p2 <- ggplot(batter, aes(x = R, y = HR)) + geom_point(alpha = 0.3, color="gray50")
+p3 <- p2 + geom_point(alpha = 0.3, data = bsub1, mapping = aes(x = R, y = HR, color=postseason))
+p4 <- p3 + geom_point(data = bsub2, mapping = aes(x = R, y = HR, color=postseason)) + # 득점과 홈런의 산점도 표시
+  geom_smooth(method='lm', se=FALSE, data=bsub2, mapping = aes(color=postseason)) + 
+  geom_text_repel(data = subset(batter, HR >= 30), aes(label = 선수명), color = 'black', size=3) +
+  geom_hline(data = mean_value3, aes(yintercept = HR, color = postseason), 
+             alpha=0.8, linetype = 2, size = 0.5, color=c('red','blue')) + # 포스트 진출 여부별 평균 홈런 선
+  geom_vline(data = mean_value3, aes(xintercept = R, color = postseason), 
+             alpha=0.8, linetype = 2, size = 0.5, color=c('red','blue')) + # 포스트 진출 여부별 평균 득점 선
+  labs(title = "Runs and Home Runs by Postseason Advancement", 
+       x = "Runs", y = "Home Runs",
+       subtitle="2024 KBO League",
+       caption="Korea Baseball Organization") +
+  theme_light() +
+  theme(legend.position = "right",
+        legend.text = element_text(size = 6),
+        legend.key.size = unit(0.5, "cm"),
+        plot.title = element_text(face = "bold", size = 10),
+        axis.title.x = element_text(size = 7),  
+        axis.title.y = element_text(size = 7),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6)); p4
+```
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 3 득점과 홈런의 관계}
+\tiny
+```{r, warning=F, message=F, fig.height = 4, fig.width = 6}
+# 3. 포스트시즌 진출여부에 따른 홈런 수와 득점의 관계
+p4
+```
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 주제3 분석결과}
+\begin{itemize}
+  \scriptsize
+  \item[\textcolor{blue}{$\bullet$}] \textbf{연구주제3: 포스트시즌 진출여부에 따른 득점과 홈런의 관계}
+    \begin{figure}
+    \includegraphics[width=0.9\textwidth, height=0.7\textheight]{Visualization3.png}
+    \end{figure}
+  \item 득점과 홈런은 비교적 강한 양의 상관관계를 보인다. (대략 0.7)
+  \item 포스트시즌 진출한 팀의 평균 득점이 6.5점 많고, 홈런이 2개 많다.
+  \item 홈런 30개 이상인 선수 7명 중 5명이 포스트 진출 팀 선수이다.
+\end{itemize}
+
+
+## \colorbox{RoyalBlue}{자료분석 및 시각화 - 주제3 분석결과}
+\begin{itemize}
+  \scriptsize
+  \item 포스트 진출팀은 홈런을 포함한 다양한 공격 전략을 통해 득점을 올리지만, 포스트 비진출팀은 홈런에만 의존하는 경향이 강하다.
+\end{itemize}
+
+\tiny
+```{r, warning=F, message=F}
+# 타석 중앙값 이상 타자의 득점과 홈런의 상관계수
+cor(bsub1$R, bsub1$HR)
+# 포스트 시즌 진출팀
+cor(bsub1[bsub1$postseason == 'Qualified',c("R","HR")],) 
+# 포스트 시즌 비진출팀
+cor(bsub1[bsub1$postseason == 'Not Qualified',c("R","HR")],) 
+```
+
+
+
+
+---
+\begin{center}
+\vspace*{\fill} 
+{\huge \textbf{Thanks!}}
+\vspace*{\fill} 
+\end{center}
